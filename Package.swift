@@ -4,41 +4,42 @@
 import PackageDescription
 
 let package = Package(
-    name: "OTModelSyncer",
+	name: "OTModelSyncer",
 	platforms: [
 		.macOS(.v13)
 	],
-    products: [
-        // Products define the executables and libraries a package produces, and make them visible to other packages.
-        .library(
-            name: "OTModelSyncer",
-            targets: ["OTModelSyncer"]),
-    ],
-    dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
-		.package(name: "MockShopifyClient", path: "../MockShopifyClient"),
-		.package(name: "ShopifyKit", path: "../ShopifyKit"),
-		.package(name: "MockPowersoftClient", path: "../MockPowersoftClient"),
-		.package(name: "PowersoftKit", path: "../PowersoftKit"),
-    ],
-    targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
-        .target(
-            name: "OTModelSyncer",
-            dependencies: [
+	products: [
+		// Products define the executables and libraries a package produces, and make them visible to other packages.
+		.library(
+			name: "OTModelSyncer",
+			targets: ["OTModelSyncer"]),
+	],
+	dependencies: [
+		// Dependencies declare other packages that this package depends on.
+		// .package(url: /* package url */, from: "1.0.0"),
+		
+		.package(url: "https://github.com/andreas16700/ShopifyKit", branch: "main"),
+		.package(url: "https://github.com/andreas16700/PowersoftKit", branch: "main"),
+		.package(url: "https://github.com/andreas16700/MockShopifyClient", branch: "main"),
+		.package(url: "https://github.com/andreas16700/MockPowersoftClient", branch: "main"),
+	],
+	targets: [
+		// Targets are the basic building blocks of a package. A target can define a module or a test suite.
+		// Targets can depend on other targets in this package, and on products in packages this package depends on.
+		.target(
+			name: "OTModelSyncer",
+			dependencies: [
 				.product(name: "PowersoftKit", package: "PowersoftKit"),
 				.product(name: "ShopifyKit", package: "ShopifyKit")
 			]),
-        .testTarget(
-            name: "OTModelSyncerTests",
-            dependencies: [
+		.testTarget(
+			name: "OTModelSyncerTests",
+			dependencies: [
 				"OTModelSyncer",
 				.product(name: "PowersoftKit", package: "PowersoftKit"),
 				.product(name: "MockPowersoftClient", package: "MockPowersoftClient"),
 				.product(name: "ShopifyKit", package: "ShopifyKit"),
 				.product(name: "MockShopifyClient", package: "MockShopifyClient"),
 			]),
-    ]
+	]
 )
