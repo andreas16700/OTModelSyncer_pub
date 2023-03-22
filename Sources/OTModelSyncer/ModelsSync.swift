@@ -8,9 +8,6 @@
 import Foundation
 import PowersoftKit
 import ShopifyKit
-import RateLimitingCommunicator
-
-
 
 public struct ModelsSync: Codable{
 	public init(id: String = UUID().uuidString, metadata: ModelsSync.Metadata = Metadata(lastUpdated: .now, state: .created), syncIDByModelCode: [String : String] = [String:String](), inQueueSyncs: [String : String] = [String:String](), interestingDoneSyncs: [String : String] = [String:String](), uninterestingDoneSyncs: [String : String] = [String:String](), failedSyncs: [String : String] = [String:String]()) {

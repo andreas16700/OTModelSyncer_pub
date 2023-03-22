@@ -9,7 +9,6 @@ import Foundation
 
 import PowersoftKit
 import ShopifyKit
-import RateLimitingCommunicator
 
 public actor SingleModelSyncer{
 	typealias EndState = SingleModelSync.EndState
