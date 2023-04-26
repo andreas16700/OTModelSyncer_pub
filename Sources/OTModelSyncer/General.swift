@@ -11,8 +11,18 @@ import PowersoftKit
 
 
 var theLog = [String]()
+let logQ = DispatchQueue(label: "otmodelsyncer log q")
+public func getOTModelSyncerLog()->[String]{
+	var l: [String] = .init()
+	logQ.sync {
+		l = theLog
+	}
+	return l
+}
 func log(_ message: String){
-	theLog.append(message)
+	logQ.async {
+		theLog.append(message)
+	}
 }
 
 extension Collection{
