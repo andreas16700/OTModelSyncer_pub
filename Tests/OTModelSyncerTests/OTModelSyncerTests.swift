@@ -15,7 +15,7 @@ final class OTModelSyncerTests: XCTestCase {
 		var gen: RandomNumberGenerator = Xorshift128Plus(xSeed: xSeed, ySeed: ySeed)
 		let psClient = MockPsClient(baseURL: URL(string: "http://localhost:8081")!)
 		let shClient = MockShClient(baseURL: URL(string: "http://localhost:8082")!)
-		let modelCount = 100
+		let modelCount = 50000
 		print("Generating \(modelCount) models")
 		let r = await psClient.generateModels(modelCount: modelCount, xSeed: xSeed, ySeed: ySeed)
 		XCTAssertTrue(r)

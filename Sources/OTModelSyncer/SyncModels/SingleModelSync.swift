@@ -173,6 +173,12 @@ public struct SingleModelSync: Codable, Hashable{
 	mutating func updatedInventory(itemCode: String, updated: InventoryLevel){
 		try! storeAssociated(itemCode: itemCode, thing: updated, kp: \.shStock)
 	}
+	mutating func updatedInventories(itemCodes: [String], updated: [InventoryLevel]){
+		precondition(itemCodes.count == updated.count)
+		for i in 0..<itemCodes.count{
+			try! storeAssociated(itemCode: itemCodes[i], thing: updated[i], kp: \.shStock)
+		}
+	}
 	mutating func inventoryUpdateFailed(forItem: String){
 		metadata.states[.inventory] = .failed
 	}

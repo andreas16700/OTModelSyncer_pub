@@ -270,6 +270,7 @@ public actor SingleModelSyncer{
 				}
 			}
 		}
+		var inventoryIDsToFetch = [(String,Int)]()
 		for (item, ass) in dict{
 			guard let variant = ass.variant else{
 				let e = ErrorType.associatedVariantNotFound
@@ -285,15 +286,23 @@ public actor SingleModelSyncer{
 				//no need to fetch inventory
 				continue
 			}
-			let inv = await sh.getInventory(of: invID)
-			guard let inv = inv else{
-				let e = ErrorType.couldNotFetchShInv
-				syncFailed(with: e)
-				return false
-			}
-			log("Adding inventory for "+item)
-			data.updatedInventory(itemCode: item, updated: inv)
+			inventoryIDsToFetch.append((item, invID))
 		}
+		let itemCodes = inventoryIDsToFetch.map(\.0)
+		let ids = inventoryIDsToFetch.map(\.1)
+		guard let i = await sh.getInventories(of: ids) else{
+			let e = ErrorType.couldNotFetchShInv
+			syncFailed(with: e)
+			return false
+		}
+		guard ids.count == i.count else {
+			let e = ErrorType.couldNotFetchShInv
+			syncFailed(with: e)
+			printDiag("Requested inventories of \(ids.count) items but only got \(i.count)!")
+			return false
+		}
+		log("Adding inventories for \(ids.count) items..")
+		data.updatedInventories(itemCodes: itemCodes, updated: i)
 		return true
 	}
 	private func inventorySync()async ->Bool{
