@@ -91,7 +91,7 @@ public actor SingleModelSyncer{
 	private func syncFailed(with error: Error, storeError: Bool = true){
 		Task{await saveSync()}
 		data.metadata.ended = Date()
-		self.data.syncFailed(with: error)
+		self.data.syncFailed(with: error, storeError: storeError)
 	}
 	public func sync(savePeriodically: Bool = true)async->SingleModelSync?{
 		Task{await saveSync()}
@@ -221,30 +221,42 @@ public actor SingleModelSyncer{
 				print("Variants are up to date.")
 				data.variantsSyncDone();return true
 			}
-			for newVariant in updates.newEntries{
-				print("New variant \(newVariant.sku!) found.")
-				if let created = await sh.createNewVariant(variant: newVariant, for: productID){
-					print("Created variant \(newVariant.sku!) with id \(created.id!)")
-					data.successUpdatedVariant(created)
-				}else{
-					print("Unable to publish new variant \(newVariant.sku!)")
-					let error: ErrorType = .variantUpdateError
-					data.failedVariantsSync(error)
-					syncFailed(with: error, storeError: false)
-				}
+			guard let updated = await sh.updateVariants(with: updates.updates) else {
+				print("Error updating variants!")
+				let e = ErrorType.variantUpdateError
+				syncFailed(with: e)
+				data.failedVariantsSync(e)
+				return false
 			}
-			for varUpdate in updates.updates{
-				print("Update for variant \(varUpdate.id!) found.")
-				if let updated = await sh.updateVariant(with: varUpdate){
-					print("Updated variant \(updated.id!) with sku \(updated.sku).")
-					data.successUpdatedVariant(updated)
-				}else{
-					print("Unable to publish update for variant \(varUpdate.id!).")
-					let e = ErrorType.variantUpdateWasNotAcceptedByShopify
-					data.failedVariantsSync(e)
-					syncFailed(with: e, storeError: false)
-					return false
-				}
+			for update in updated {
+				print("Updated variant \(update.id!) with sku \(update.sku).")
+				data.successUpdatedVariant(update)
+			}
+			
+			guard updated.count == updates.updates.count else {
+				print("Requested \(updates.updates.count) variant updates but received only \(updated.count)!")
+				let e = ErrorType.variantUpdateError
+				syncFailed(with: e)
+				data.failedVariantsSync(e)
+				return false
+			}
+			guard let created = await sh.createNewViariants(variants: updates.newEntries, for: productID) else {
+				print("Error creating new variants!")
+				let e = ErrorType.newVariantWasNotAcceptedByShopify
+				syncFailed(with: e)
+				data.failedVariantsSync(e)
+				return false
+			}
+			for newVariant in created {
+				print("Created variant \(newVariant.sku) with id \(newVariant.id!)")
+				data.successUpdatedVariant(newVariant)
+			}
+			guard created.count == updates.newEntries.count else {
+				print("Requested \(updates.newEntries.count) new variants but received only \(created.count)!")
+				let e = ErrorType.variantUpdateError
+				syncFailed(with: e)
+				data.failedVariantsSync(e)
+				return false
 			}
 		}catch{
 			data.failedVariantsSync(error)
@@ -312,25 +324,37 @@ public actor SingleModelSyncer{
 				self.data.inventorySyncDone()
 				return true
 			}
-			for (itemCode, update) in updates{
-				print("Should update stock of "+itemCode+" to -> \(update.available)")
-				guard let associated = data.source.getItemAssociatedData(itemCode: itemCode), let currentInventory = associated.shStock else{
-					print(itemCode+" has no associated data!")
-					let e = ErrorType.noAssociatedItemData
-					syncFailed(with: e)
-					return false
-				}
-				
-				guard let u = await sh.updateInventory(current: currentInventory, update: update) else{
-					print(itemCode+"'s stock was not updated!")
-					let e = ErrorType.couldNotUpdateShInv
-					syncFailed(with: e)
-					return false
-				}
-				let currentStr = currentInventory.available == nil ? "_" : "\(currentInventory.available!)"
-				print("stock of "+itemCode+" was updated: \(currentStr)  -> \(update.available)")
-				data.updatedInventory(itemCode: itemCode, updated: u)
+			guard let updated = await sh.updateInventories(updates: Array(updates.values)) else{
+				print("Error updating \(updates.count) inventories!")
+				let e = ErrorType.couldNotUpdateShInv
+				syncFailed(with: e)
+				return false
 			}
+			let succeededItemCodes = updated.map{lvl in
+				updates.first(where: {$0.value.inventoryItemID == lvl.inventoryItemID})!.key
+			}
+			data.updatedInventories(itemCodes: succeededItemCodes, updated: updated)
+			let invUpdateSucceeded: (String)->Bool = {itemCode in
+				let invID = updates[itemCode]!.inventoryItemID
+				return updated.contains(where: {$0.inventoryItemID == invID})
+			}
+			for (itemCode, update) in updates{
+				print("Should update stock of "+itemCode+" to -> \(update.available) Succeeded? [\(invUpdateSucceeded(itemCode) ? "Yes" : "No!")]")
+//				This is likely not needed (?)
+//				guard let associated = data.source.getItemAssociatedData(itemCode: itemCode), let currentInventory = associated.shStock else{
+//					print(itemCode+" has no associated data!")
+//					let e = ErrorType.noAssociatedItemData
+//					syncFailed(with: e)
+//					return false
+//				}
+			}
+			guard updated.count == updates.count else{
+				print("\(updates.count - updated.count)/\(updates.count) inventory updates failed!")
+				let e = ErrorType.couldNotUpdateShInv
+				syncFailed(with: e)
+				return false
+			}
+			
 			data.inventorySyncDone()
 			return true
 		}catch{
